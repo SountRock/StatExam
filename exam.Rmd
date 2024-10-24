@@ -352,7 +352,7 @@ predictions_test <- predict(model_4, newdata = predictions_data_test,  interval 
 predictions_data_test <- data.frame(predictions_data_test, predictions_test)
 View(predictions_data_test)
 ```
-Предсказания имеют сильные при резко малых истиных значениях PTSD_symptoms. 
+Предсказания имеют сильные отклонения, при резко малых истиных значениях PTSD_symptoms. 
 
 P.S.В exam2.R точно такая же модель, все переменные назваються так же. 
 В exam.R модель, без всей этой шизы со связями между предикторами. Имена переменных те же.
