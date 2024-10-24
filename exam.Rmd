@@ -1,0 +1,421 @@
+---
+title: "exam"
+author: "Чупов Е. А"
+date: "23.10.2024"
+output:
+    html_document:
+      toc: true
+      toc_depth: 3
+      toc_float: true
+      number_section: true
+---
+
+```{r setup, include=FALSE}
+library(readxl)
+library(psych)
+library(car)
+library(ggplot2)
+library(dplyr)
+library(gridExtra)
+library(cowplot)
+library(Hmisc)
+library(multcomp)
+library(corrplot)
+```
+
+# Начало
+
+Откроем датасет и занесем его в переменную, убрав пробелы в названиях столбцов и избавимся от NA значений:
+
+```{r}
+data <- read_excel('Data/PTSR.xlsx')
+colnames(data) = gsub(" ", "_", colnames(data))
+
+data <- na.omit(data)
+```
+
+# EDA
+
+Отобразим структру data и корреляции между параметрами:
+
+```{r}
+str(data)
+
+num_data <- data[sapply(data, is.numeric)]
+data_PTSR.cor <- cor(num_data, method = c("pearson"))
+data_PTSR.cor
+corrplot(data_PTSR.cor)
+```
+
+Как видно есть сильная корреция меджу симптомами PTSD и Надеждой. Так же значтельная корреляция между Надеждой и Соц. подержкой, симптомами PTSD и Соц. подержкой.
+
+```{r}
+str(data)
+
+num_data <- data[sapply(data, is.numeric)]
+data_PTSR.cor = cor(num_data, method = c("pearson"))
+data_PTSR.cor
+corrplot(data_PTSR.cor)
+```
+
+## Распределение значений Hope и Resilience
+
+Построим графики рапредлений Hope и Resilience:
+
+```{r}
+p_Hope <- ggplot(data, aes(Hope)) +
+  geom_density() +
+  facet_grid(Treatment_type~Metastasis) +
+  theme_bw()
+
+p_Resilience <- ggplot(data, aes(Resilience)) +
+  geom_density() +
+  facet_grid(Treatment_type~Metastasis) +
+  theme_bw()
+
+plot_grid(p_Hope, p_Resilience)
+```
+
+Мы видим нормальное распределение. 
+
+## Нормализация
+
+Попробуем нормальзовать значения 3-мя методами сразу:
+
+```{r}
+#Разбиваем датасет на количесвенные и каочесвенные предикторы
+data_nums <- data[grep("Social_support", colnames(data)) : 
+                    grep("PTSD_symptoms", colnames(data))] %>% mutate(data[grep("Age", colnames(data))])
+
+data_char <- data[grep("Marital_status", colnames(data)) : 
+                    grep("Metastasis", colnames(data))] %>% mutate(data[grep("Marital_status_Education", colnames(data))])
+
+#Нормализация min/max
+normilize_1 <- function(x) {
+  return(x - min(x)) / (max(x) - min(x))
+}
+
+#Нормализация методом Z-оценок 
+normilize_2 <- function(x) {
+  return((x - mean(x)) / sd(x))
+}
+
+#Нормализацуем
+data_nums <- data_nums %>% summarise(across(everything(), normilize_1))
+data_nums <- data_nums %>% summarise(across(everything(), normilize_2))
+
+data_normalize <- data
+#Заменяем значения в оригинальном датасете
+data_normalize[,1] <- data_nums[,5] 
+data_normalize[,8:11] <- data_nums[,1:4]
+
+p_Hope_normalize <- ggplot(data_normalize, aes(Hope)) +
+  geom_density() +
+  facet_grid(Treatment_type~Metastasis) +
+  theme_bw()
+
+p_Resilience_normalize <- ggplot(data_normalize, aes(Resilience)) +
+  geom_density() +
+  facet_grid(Treatment_type~Metastasis) +
+  theme_bw()
+
+plot_grid(p_Hope_normalize, p_Resilience_normalize)
+```
+
+Как видно нормализация не сильно улучшила картину, но у нас и так изначалльно было нормальное распределение
+
+## Проверим Как Resilience влияет на Hope пациентов с разным образованием:
+
+```{r}
+p_Hope_Resilience_Cancer_stage <- ggplot(data, aes(Resilience, Hope, fill = Cancer_stage)) +
+  geom_smooth(color = "black") +
+  facet_grid(Cancer_stage~.) + 
+  theme_bw()
+p_Hope_Resilience_Cancer_stage 
+```
+
+Исходя из полученных данных сформируем возможные гипотезы:
+
+-   Гипотеза 1: у пациентов на стадии рака I наблюдаеться падение Hope при черезмерном повышении устойчивости
+
+-   Гипотеза 2: для пациентов на стадии рака III и IV имеют более стабильную надежду при росте устойчивости
+
+-   Гипотеза 3: пациенты на стадии рака III имеют самое не стабильное развитие надежды при росте устойчивости
+
+-   Гипотеза 4: пациенты на II стадии рака имеют большую веру в лучшее
+
+## Проверим связь между риском появления метастаз с типом лечения:
+
+```{r}
+#Создадим новый dataframe, где опредилим такой показатель как 
+#разность между количесвом имеющихся метастаз и их отсуствия в методе
+data_group_treatment <- data %>% group_by(Treatment_type) %>% summarise(
+  count_No_metastasis = sum(Metastasis == "No"),  count_Yes_metastasis = sum(Metastasis == "Yes"), 
+  diff_No_Yes = sum(Metastasis == "No") - sum(Metastasis == "Yes")) 
+
+#Для отображения эффективности методов лечения построим график
+p_Treatment_diff_No_Yes_metastasis <- 
+  ggplot(data = data_group_treatment, 
+         aes(y = diff_No_Yes, x = Treatment_type, fill =  factor(Treatment_type))) + 
+  geom_bar(stat = "identity")
+
+p_Treatment_diff_No_Yes_metastasis
+```
+Исходя из полученных данных сформируем возможные гипотезы:
+
+-   Гипотеза 1: комбинированная терапия эффективнее, чем химиотераипия/комбинированная терапия является самым эффективным методом лечения 
+
+-   Гипотеза 2: хирургическое лечение самое мало эффективное лечение.
+
+## Проверим как социальная поддержка вляет на развитие симтомов PTSD
+```{r}
+p_Social_support_PTSD_symptoms <- 
+  ggplot(data = data, aes(Social_support, PTSD_symptoms, fill = Education)) + 
+  geom_violin() + 
+  geom_point() + 
+  facet_grid(Education~.)
+p_Social_support_PTSD_symptoms 
+#Блинны-ны-ны ны-ны-ны
+```
+Исходя из полученных данных сформируем возможные гипотезы:
+
+-   Гипотеза 1: для студентов колледжа оказваеться большая пооджержка чем для отстальных
+
+-   Гипотеза 2: для учеников старшей школы оказваеться меньшая социальная поддержка чем для учеников начальной школы
+
+-   Гипотеза 3: ученики старшей школы имеют более выраженные PTSD симптомы, чем остальные группы
+
+# Линейная модель
+Для более осознаной построки модели еще раз посмотрим на коррелция между предикторами:
+```{r}
+corrplot(data_PTSR.cor) 
+```
+Исходя из них построим линейную модель отобразив более или менее сильные взаимосвязи:
+```{r}
+model <- lm(PTSD_symptoms ~ Social_support:Hope + Resilience:Hope + Age, data = data_nums)
+summary(model)
+```
+Постморим на график остатков:
+```{r}
+model_diag_original <- data.frame(fortify(model), data_nums) 
+gg_resid_original <- ggplot(data = model_diag_original, aes(x = .fitted, y = .stdresid)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) +
+  geom_smooth(method = "lm") +
+  geom_hline(yintercept = 2, color = "red") +
+  geom_hline(yintercept = -2, color = "red")  
+
+gg_resid_original
+```
+Наблюдаеться не совсем хороший график, остатки больше организуються в клюв, чем в песочные часы.
+
+Посмотрим на графики остатков относительно предикторов:
+```{r}
+res_1_original <- gg_resid_original + aes(x = Hope)
+res_2_original <- gg_resid_original + aes(x = Resilience)
+res_3_original <- gg_resid_original + aes(x = Social_support)
+res_4_original <- gg_resid_original + aes(x = Age)
+
+grid.arrange(res_1_original, res_2_original, res_3_original, res_4_original, nrow = 2)
+```
+Из графиков как ни странно видна корреляция между Hope и Social_support. Но между Social_support и Resilience кажеться, что имеется корреляция, хоть и corplot дает неувереность в том, что она достаточно сильна.
+
+Поэкспериментируем с моделью и сначала учием что все выше описанные взаимосвязи возможны:
+```{r}
+model_1 <- lm(PTSD_symptoms ~ Social_support*Hope*Resilience + Age, data = data_nums)
+summary(model_1) 
+```
+p-value значительно уменьшилось (в отрицательной степени). Но: 
+```{r}
+model_2 <- lm(PTSD_symptoms ~ Social_support*Hope + Resilience + Age, data = data_nums)
+summary(model_2)
+```
+Видим тоже значение p-value. Предпологаем, тогда что взаимосвязь между Resilience с Social_support и Hope ложна.
+
+Построим график остатков:
+```{r}
+model_diag_model_2 <- data.frame(fortify(model_2), data_nums) 
+gg_resid_model_2 <- ggplot(data = model_diag_model_2, aes(x = .fitted, y = .stdresid)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) +
+  geom_smooth(method = "lm") +
+  geom_hline(yintercept = 2, color = "red") +
+  geom_hline(yintercept = -2, color = "red")  
+
+gg_resid_model_2
+```
+
+Попробуем избавиться от записей на которых замечены выбросы:
+```{r}
+data_nums_without_emissions <- data_nums %>% mutate(.stdresid = model_diag_model_2$.stdresid) %>% 
+  filter(.stdresid < 1.999 & .stdresid > -1.999)
+
+#Перестроим модель по той же схеме:
+model_2_we <- lm(PTSD_symptoms ~ Social_support*Hope + Resilience + Age, data = data_nums_without_emissions)
+
+#Постром график остатков снова
+model_diag_model_2_without_emissions <- data.frame(fortify(model_2_we), data_nums_without_emissions)
+
+model_diag_model_2_without_emissions <- data.frame(fortify(model_2_we), data_nums_without_emissions) 
+gg_resid_model_2_without_emissions <- ggplot(data = model_diag_model_2_without_emissions, aes(x = .fitted, y = .stdresid)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) +
+  geom_smooth(method = "lm") +
+  geom_hline(yintercept = 2, color = "red") +
+  geom_hline(yintercept = -2, color = "red") 
+
+gg_resid_model_2_without_emissions
+```
+
+Из графика видно, что дисперсия стала немного лучше.
+
+Посмотрим на графики остатков относительно предикторов:
+```{r}
+res_1_model_2 <- gg_resid_model_2_without_emissions + aes(x = Hope)
+res_2_model_2 <- gg_resid_model_2_without_emissions + aes(x = Resilience)
+res_3_model_2 <- gg_resid_model_2_without_emissions + aes(x = Social_support)
+res_4_model_2 <- gg_resid_model_2_without_emissions + aes(x = Age)
+
+grid.arrange(res_1_model_2, res_2_model_2, res_3_model_2, res_4_model_2, nrow = 2)
+```
+Визуально корреляции исчезли.
+
+## Улучшение модели
+Проведем проверку на мультиколлинеарность и проведем F-тест:
+```{r}
+vif(model) #Неких значений болше 2 невыявлено. Ничего не удаляем. 
+
+drop1(model_2_we, test = "F")
+
+summary(model) #Еще теперь будем проверять значение p-value, чтобы не привести к его ухудшению (увеличению). 
+```
+Как видно из F-теста Age сасый незначительный предиктора на данный момент. Удалим его и проведем еще один F-тест после удаления:
+```{r}
+model_3 <- update(model_2_we, .~. - Age)
+drop1(model_3, test = "F")
+
+summary(model_3)
+```
+p-value уменьшилось.
+По результатам теста мы должны удалить Resilience:
+```{r}
+model_4 <- update(model_3, .~. - Resilience)
+drop1(model_4, test = "F")
+
+summary(model_4)
+```
+
+## Продиагностируем модель model_4
+```{r}
+model_diag_model_4 <- data.frame(fortify(model_4), data_nums_without_emissions) 
+gg_resid_model_4 <- ggplot(data = model_diag_model_4, aes(x = .fitted, y = .stdresid)) + 
+  geom_point() + 
+  geom_hline(yintercept = 0) +
+  geom_smooth(method = "lm") +
+  geom_hline(yintercept = 2, color = "red") +
+  geom_hline(yintercept = -2, color = "red")
+
+gg_resid_model_4
+
+res_1_model_4 <- gg_resid_model_4 + aes(x = Hope)
+res_2_model_4 <- gg_resid_model_4 + aes(x = Social_support)
+res_3_model_4 <- gg_resid_model_4 + aes(x = Resilience)
+grid.arrange(res_1_model_4, res_2_model_4, res_3_model_4, nrow = 2)
+
+qqPlot(model_diag_model_4$.stdresid)
+```
+Как видим дисперсия у нас не изменилась по сравнению с начальной моделью (в которой мы убради выбросы) и все еще соотвествует норме (не идеальной, но норме). 
+На графиках по предикторам видно только, что график Resilience стал под наклоном, но он не коррелирует с другими предикторами.
+Самая плохая дисперсия у Соц. поддержки. Возможно она и портит, общую дисперсию немного.
+График квантилей не вызывает сильных подозрений.
+
+## Предсказания
+Для предсказаний подготовим вспомогательный dataframe, расчитаем предсказания и отобразим их на графике:
+```{r}
+predictions_data <- data.frame(
+  Hope = seq(min(data_nums_without_emissions$Hope), max(data_nums_without_emissions$Hope), length.out = 100),
+  Social_support = mean(data_nums_without_emissions$Social_support))
+
+predictions <- predict(model_4, newdata = predictions_data,  interval = 'confidence')
+predictions_data <- data.frame(predictions_data, predictions)
+
+Pl_predict <- ggplot(predictions_data, aes(x = Hope, y = fit)) +
+  geom_ribbon(alpha = 0.2, aes(ymin = lwr, ymax = upr)) +
+  geom_line()
+Pl_predict 
+```
+
+# Дисперсионный анализ
+Построим модель для дисперсионного анализа:
+```{r}
+data$Cancer_stage <- factor(data$Cancer_stage)
+model_disp <- lm(data = data, PTSD_symptoms ~ Cancer_stage)
+summary(model_disp)
+```
+Постром график к зависимости числа эксцистирований от условий обработки (исходные данные):
+```{r}
+ggplot(data, aes(Cancer_stage, PTSD_symptoms, color = Cancer_stage)) + 
+  stat_summary(fun.data = "mean_cl_normal") 
+```
+
+Видна незначительность различий между I-II и II-(III и IV). Но видны значительные различия между I и (III и IV) стадиями.
+
+Проведем дисперсионный анализа:
+```{r}
+model_disp_anova <- Anova(model_disp)
+model_disp_anova
+```
+
+F-value указывает на возможные различия между группами. https://habr.com/ru/companies/otus/articles/734258/ отсюда понял, что F-value большое :)
+
+Построим график расстояний Кука:
+```{r}
+model_disp_diag <- fortify(model_disp)
+p_kuke <- ggplot(model_disp_diag, aes(x = 1:nrow(model_disp_diag), y = .cooksd)) + 
+  geom_bar(stat = "identity") + 
+  ggtitle("График расстояний Кука")
+p_kuke 
+```
+Здесь мы видим локальные сильные разбросы значений отклонений прогназируемых значений PTSD_symptoms.
+
+Построим графки остатков:
+```{r}
+p_remains <- ggplot(model_disp_diag, aes(x = Cancer_stage, y = .stdresid)) + 
+  geom_boxplot() +
+  geom_hline(yintercept = 0) +
+  ggtitle("График остатков")
+p_remains
+```
+Видно не особо сильное смещение медиальных значений.
+
+Построим график квантильных остатков:
+```{r}
+qqPlot(model_disp, id = FALSE) #На концах графика видны сильные выбросы
+```
+На концах графика видны сильные выбросы, что не внушает доверия моделе. 
+## Пост-хок тест
+Проведем пост-хок Тьюки тест:
+```{r}
+post_hoch <- glht(model_disp, linfct = mcp(Cancer_stage = "Tukey"))
+result_post_hoch <- summary(post_hoch)
+result_post_hoch
+```
+Самое большое различние обнаружено между III-IV и I, что и следовало ожидать. 
+
+## Прогноз
+Расчитаем прогнозируемые данные:
+```{r}
+predictions_data_disp <- data.frame(Cancer_stage = factor(levels(data$Cancer_stage), levels = levels(data$Cancer_stage)))
+predictions_data_disp <- data.frame(predictions_data_disp,
+                     predict(model_disp, newdata = predictions_data_disp, interval = "confidence")
+)
+
+gg_bars <- ggplot(data = predictions_data_disp, aes(x = Cancer_stage, y = fit)) +
+  geom_bar(stat = "identity", aes(fill = Cancer_stage), width = 0.5) +
+  geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.1)
+gg_bars
+```
+Виден сильный разброс на стадии II, причем даже с учетом разросов групп I и III-IV пересечения не произойдет и степень различий сохраниться. 
+Группа II c учетом разброса показывает не сильные различия между двумя другими группами. Опять все как и должно быть...
+
+Причем локальные участик сильной дисперсии на графике растоний Кука были вызваны скорее всего группой II стадии.
