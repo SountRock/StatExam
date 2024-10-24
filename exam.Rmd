@@ -209,7 +209,7 @@ gg_resid_original
 ```
 Наблюдаеться не совсем хороший график, остатки больше организуються в клюв, чем в песочные часы.
 
-Посмотрим на графики остатков относительно предикторов:
+Проведем анализа главных компонентов:
 ```{r}
 res_1_original <- gg_resid_original + aes(x = Hope)
 res_2_original <- gg_resid_original + aes(x = Resilience)
@@ -308,6 +308,7 @@ summary(model_4)
 ## Продиагностируем модель model_4
 ```{r}
 model_diag_model_4 <- data.frame(fortify(model_4), data_nums_without_emissions) 
+#График остатков
 gg_resid_model_4 <- ggplot(data = model_diag_model_4, aes(x = .fitted, y = .stdresid)) + 
   geom_point() + 
   geom_hline(yintercept = 0) +
@@ -317,6 +318,7 @@ gg_resid_model_4 <- ggplot(data = model_diag_model_4, aes(x = .fitted, y = .stdr
 
 gg_resid_model_4
 
+#Анализа главных компонентов
 res_1_model_4 <- gg_resid_model_4 + aes(x = Hope)
 res_2_model_4 <- gg_resid_model_4 + aes(x = Social_support)
 res_3_model_4 <- gg_resid_model_4 + aes(x = Resilience)
@@ -333,8 +335,8 @@ qqPlot(model_diag_model_4$.stdresid)
 Для предсказаний подготовим вспомогательный dataframe, расчитаем предсказания и отобразим их на графике:
 ```{r}
 predictions_data <- data.frame(
-  Hope = seq(min(data_nums_without_emissions$Hope), max(data_nums_without_emissions$Hope), length.out = 100),
-  Social_support = mean(data_nums_without_emissions$Social_support))
+  Hope = seq(min(data$Hope), max(data$Hope), length.out = 100),
+  Social_support = mean(data$Social_support))
 
 predictions <- predict(model_4, newdata = predictions_data,  interval = 'confidence')
 predictions_data <- data.frame(predictions_data, predictions)
@@ -344,6 +346,21 @@ Pl_predict <- ggplot(predictions_data, aes(x = Hope, y = fit)) +
   geom_line()
 Pl_predict 
 ```
+Чтобы протестировать точность модели проведем один, тест где попробуем предсказать значения зная истинное:
+```{r}
+predictions_data_test <- data.frame(
+  Hope = data_nums_without_emissions$Hope,
+  Social_support = data_nums_without_emissions$Social_support,
+  PTSD_symptoms = data_nums_without_emissions$PTSD_symptoms)
+
+predictions_test <- predict(model_4, newdata = predictions_data_test,  interval = 'confidence')
+predictions_data_test <- data.frame(predictions_data_test, predictions_test)
+View(predictions_data_test)
+```
+Предсказания имеют сильные при резко малых истиных значениях PTSD_symptoms. 
+
+P.S.В exam2.R точно такая же модель, все переменные назваються так же. 
+В exam.R модель, без всей этой шизы со связями между предикторами. Имена переменных те же.
 
 # Дисперсионный анализ
 Построим модель для дисперсионного анализа:
