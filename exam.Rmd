@@ -21,6 +21,7 @@ library(cowplot)
 library(Hmisc)
 library(multcomp)
 library(corrplot)
+library(ggdark)
 ```
 
 # Начало
@@ -58,15 +59,19 @@ p_Hope <- ggplot(data, aes(Hope)) +
   geom_density() +
   facet_grid(Treatment_type~Metastasis, labeller = 
              labeller(Treatment_type = label_wrap_gen(10))) +
-  theme(strip.text.y = element_text(size = 5)) +
-  labs(title = 'Рапределение параметра \n Hope')
+  dark_theme_gray() +
+  theme(strip.text.y = element_text(size = 4)) +
+  labs(title = 'Рапределение параметра \n Hope') 
+
 
 p_Resilience <- ggplot(data, aes(Resilience)) +
   geom_density() +
   facet_grid(Treatment_type~Metastasis, labeller = 
              labeller(Treatment_type = label_wrap_gen(10))) +
-  theme(strip.text.y = element_text(size = 5)) +
+  dark_theme_gray() +
+  theme(strip.text.y = element_text(size = 4)) +
   labs(title = 'Рапределение параметра \n Resilience') 
+    
 
 plot_grid(p_Hope, p_Resilience)
 ```
@@ -113,6 +118,7 @@ p_Hope_normalize <- ggplot(data_normalize, aes(Hope)) +
   geom_density() +
   facet_grid(Treatment_type~Metastasis, labeller = 
              labeller(Treatment_type = label_wrap_gen(10))) +
+  dark_theme_gray() +
   theme(strip.text.y = element_text(size = 5)) +
   labs(title = 'Рапределение параметра \n Hope')
 
@@ -120,6 +126,7 @@ p_Resilience_normalize <- ggplot(data_normalize, aes(Resilience)) +
   geom_density() +
   facet_grid(Treatment_type~Metastasis, labeller = 
              labeller(Treatment_type = label_wrap_gen(10))) +
+  dark_theme_gray() +
   theme(strip.text.y = element_text(size = 5)) +
   labs(title = 'Рапределение параметра \n Resilience') 
 
@@ -141,7 +148,9 @@ p_Hope_Resilience_Cancer_stage <- ggplot(data, aes(Resilience, Hope, fill = Canc
   geom_smooth(color = "black") +
   facet_grid(Cancer_stage~.) +
   theme_bw() + 
-  labs(title = 'Hope(Resilience) для разных стадий рака', 
+  labs(title = 'Зависимость Надежды от Стойкости для разных стадий рака', 
+       y = 'Надежда',
+       x = 'Стойкость',
        fill = 'Стадии рака') 
 p_Hope_Resilience_Cancer_stage 
 ```
@@ -172,6 +181,7 @@ p_Treatment_diff_No_Yes_metastasis <-
   ggplot(data = data_group_treatment, 
          aes(y = diff_No_Yes, x = Treatment_type, fill =  factor(Treatment_type))) + 
   geom_bar(stat = "identity") +
+  dark_theme_gray() +
   labs(title = 'Диаграмма эффективности лечения', 
        x = 'Тип лечения',
        y = 'Эффективность лечения',
@@ -191,7 +201,8 @@ p_Treatment_diff_No_Yes_metastasis
 p_Social_support_PTSD_symptoms <- 
   ggplot(data = data, aes(Social_support, PTSD_symptoms, fill = Education)) + 
   geom_violin() + 
-  geom_point() + 
+  geom_point(colour = 'white') + 
+  dark_theme_gray() +
   facet_grid(Education~., labeller = 
              labeller(Education = label_wrap_gen(10))) +
   theme(strip.text.y = element_text(size = 6)) +
@@ -230,6 +241,7 @@ gg_resid_original <- ggplot(data = model_diag_original, aes(x = .fitted, y = .st
   geom_smooth(method = "lm") +
   geom_hline(yintercept = 2, color = "red") +
   geom_hline(yintercept = -2, color = "red") + 
+  dark_theme_gray() +
   labs(title = 'График дисперсии остатков',
        y = 'Стандр. отстатки',
        x = 'Установленные значения')
@@ -240,13 +252,17 @@ gg_resid_original
 
 Проведем анализа главных компонентов:
 ```{r}
-res_1_original <- gg_resid_original + aes(x = Hope) + 
+res_1_original <- gg_resid_original + aes(x = Hope) +
+  dark_theme_gray() +
   labs(x = 'Надежда')
 res_2_original <- gg_resid_original + aes(x = Resilience) + 
+  dark_theme_gray() +
   labs(x = 'Стойкость')
 res_3_original <- gg_resid_original + aes(x = Social_support) + 
+  dark_theme_gray() +
   labs(x = 'Соц. поддержка')
 res_4_original <- gg_resid_original + aes(x = Age) + 
+  dark_theme_gray() +
   labs(x = 'Возраст')
 
 grid.arrange(res_1_original, res_2_original, res_3_original, res_4_original, nrow = 2)
@@ -268,7 +284,8 @@ gg_resid_model_2 <- ggplot(data = model_diag_model_2, aes(x = .fitted, y = .stdr
   geom_hline(yintercept = 0) +
   geom_smooth(method = "lm") +
   geom_hline(yintercept = 2, color = "red") +
-  geom_hline(yintercept = -2, color = "red") + 
+  geom_hline(yintercept = -2, color = "red") +
+  dark_theme_gray() +
   labs(title = 'График дисперсии остатков',
        y = 'Стандр. отстатки',
        x = 'Установленные значения') 
@@ -292,7 +309,8 @@ gg_resid_model_2_without_emissions <- ggplot(data = model_diag_model_2_without_e
   geom_hline(yintercept = 0) +
   geom_smooth(method = "lm") +
   geom_hline(yintercept = 2, color = "red") +
-  geom_hline(yintercept = -2, color = "red") + 
+  geom_hline(yintercept = -2, color = "red") +
+  dark_theme_gray() +
   labs(title = 'График дисперсии остатков',
        y = 'Стандр. отстатки',
        x = 'Установленные значения') 
@@ -305,12 +323,16 @@ gg_resid_model_2_without_emissions
 Посмотрим на графики остатков относительно предикторов:
 ```{r}
 res_1_model_2 <- gg_resid_model_2_without_emissions + aes(x = Hope) + 
+  dark_theme_gray() +
   labs(x = 'Надежда')
 res_2_model_2 <- gg_resid_model_2_without_emissions + aes(x = Resilience) + 
+  dark_theme_gray() +
   labs(x = 'Стойкость')
 res_3_model_2 <- gg_resid_model_2_without_emissions + aes(x = Social_support) + 
+  dark_theme_gray() +
   labs(x = 'Соц. поддержка')
-res_4_model_2 <- gg_resid_model_2_without_emissions + aes(x = Age) + 
+res_4_model_2 <- gg_resid_model_2_without_emissions + aes(x = Age) +
+  dark_theme_gray() +
   labs(x = 'Возраст')
 
 grid.arrange(res_1_model_2, res_2_model_2, res_3_model_2, res_4_model_2, nrow = 2)
@@ -351,7 +373,8 @@ gg_resid_model_4 <- ggplot(data = model_diag_model_4, aes(x = .fitted, y = .stdr
   geom_hline(yintercept = 0) +
   geom_smooth(method = "lm") +
   geom_hline(yintercept = 2, color = "red") +
-  geom_hline(yintercept = -2, color = "red") + 
+  geom_hline(yintercept = -2, color = "red") +
+  dark_theme_gray() +
   labs(title = 'График дисперсии остатков',
        y = 'Стандр. отстатки',
        x = 'Установленные значения') 
@@ -359,9 +382,15 @@ gg_resid_model_4 <- ggplot(data = model_diag_model_4, aes(x = .fitted, y = .stdr
 gg_resid_model_4
 
 #Анализа главных компонентов
-res_1_model_4 <- gg_resid_model_4 + aes(x = Hope)
-res_2_model_4 <- gg_resid_model_4 + aes(x = Social_support)
-res_3_model_4 <- gg_resid_model_4 + aes(x = Resilience)
+res_1_model_4 <- gg_resid_model_4 + aes(x = Hope) +
+  dark_theme_gray() +
+  labs(x = 'Надежда')
+res_2_model_4 <- gg_resid_model_4 + aes(x = Social_support) + 
+  dark_theme_gray() +
+  labs(x = 'Соц. поддержка')
+res_3_model_4 <- gg_resid_model_4 + aes(x = Resilience) + 
+  dark_theme_gray() +
+  labs(x = 'Стойкость')
 grid.arrange(res_1_model_4, res_2_model_4, res_3_model_4, nrow = 2)
 
 qqPlot(model_diag_model_4$.stdresid, main = 'Q-Q График', ylab = 'Стандр. отстатки', xlab = 'Кванитили')
@@ -384,6 +413,7 @@ predictions_data <- data.frame(predictions_data, predictions)
 Pl_predict <- ggplot(predictions_data, aes(x = Hope, y = fit)) +
   geom_ribbon(alpha = 0.2, aes(ymin = lwr, ymax = upr)) +
   geom_line() + 
+  dark_theme_gray() +
   labs(title = 'График прогнозов',
        y = 'Прогнозируемое PTSD_symptoms',
        x = 'Надежда') 
@@ -416,6 +446,7 @@ summary(model_disp)
 ```{r}
 ggplot(data, aes(Cancer_stage, PTSD_symptoms, color = Cancer_stage)) + 
   stat_summary(fun.data = "mean_cl_normal") +
+  dark_theme_gray() +
   labs(title = 'График зависимости числа эксцистирований \n от условий обработки (исходные данные)',
        y = 'PTSD симптомы',
        x = 'Стадия рака', 
@@ -437,6 +468,7 @@ F-value указывает на возможные различия между �
 model_disp_diag <- fortify(model_disp)
 p_kuke <- ggplot(model_disp_diag, aes(x = 1:nrow(model_disp_diag), y = .cooksd)) + 
   geom_bar(stat = "identity") + 
+  dark_theme_gray() +
   labs(title = 'График расстояний Кука',
        y = 'растояния Кука',
        x = 'номер записи')
@@ -455,6 +487,7 @@ model_disp_diag$Cancer_stage <- gsub("Ⅳ","IV", model_disp_diag$Cancer_stage)
 p_remains <- ggplot(model_disp_diag, aes(x = Cancer_stage, y = .stdresid, fill = factor(Cancer_stage))) + 
   geom_boxplot() +
   geom_hline(yintercept = 0) +
+  dark_theme_gray() +
   labs(title = 'График остатков',
        y = 'Стандр. отстатки',
        x = 'Стадия рака',
@@ -489,6 +522,7 @@ predictions_data_disp <- data.frame(predictions_data_disp,
 gg_bars <- ggplot(data = predictions_data_disp, aes(x = Cancer_stage, y = fit)) +
   geom_bar(stat = "identity", aes(fill = Cancer_stage), width = 0.5) +
   geom_errorbar(aes(ymin = lwr, ymax = upr), width = 0.1) + 
+  dark_theme_gray() +
   labs(title = 'График прогнозов',
        y = 'Прогнозируемое PTSD_symptoms',
        x = 'Стадия рака',
