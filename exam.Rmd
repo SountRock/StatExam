@@ -2,12 +2,16 @@
 title: "exam"
 author: "Чупов Е. А"
 date: "23.10.2024"
+
 output:
-    html_document:
-      toc: true
-      toc_depth: 3
-      toc_float: true
-      number_section: true
+  prettydoc::html_pretty:
+    theme: tactile
+    toc: yes
+   # html_document:
+   #   toc: true
+   #   toc_depth: 3
+   #   toc_float: true
+   #   number_section: true
 ---
 
 ```{r setup, include=FALSE}
@@ -22,6 +26,7 @@ library(Hmisc)
 library(multcomp)
 library(corrplot)
 library(ggdark)
+library(prettydoc)
 ```
 
 # Начало
@@ -60,7 +65,7 @@ p_Hope <- ggplot(data, aes(Hope)) +
   facet_grid(Treatment_type~Metastasis, labeller = 
              labeller(Treatment_type = label_wrap_gen(10))) +
   dark_theme_gray() +
-  theme(strip.text.y = element_text(size = 4)) +
+  theme(strip.text.y = element_text(size = 5)) +
   labs(title = 'Рапределение параметра \n Hope') 
 
 
@@ -69,7 +74,7 @@ p_Resilience <- ggplot(data, aes(Resilience)) +
   facet_grid(Treatment_type~Metastasis, labeller = 
              labeller(Treatment_type = label_wrap_gen(10))) +
   dark_theme_gray() +
-  theme(strip.text.y = element_text(size = 4)) +
+  theme(strip.text.y = element_text(size = 5)) +
   labs(title = 'Рапределение параметра \n Resilience') 
     
 
@@ -132,7 +137,6 @@ p_Resilience_normalize <- ggplot(data_normalize, aes(Resilience)) +
 
 plot_grid(p_Hope_normalize, p_Resilience_normalize)
 ```
-
 Как видно нормализация не сильно улучшила картину, но у нас и так изначалльно было нормальное распределение
 
 ## Проверим Как Resilience влияет на Hope пациентов с разным образованием:
@@ -145,10 +149,10 @@ data$Cancer_stage <- gsub("Ⅲ", "III", data$Cancer_stage)
 data$Cancer_stage <- gsub("Ⅳ","IV", data$Cancer_stage)
 
 p_Hope_Resilience_Cancer_stage <- ggplot(data, aes(Resilience, Hope, fill = Cancer_stage)) +
-  geom_smooth(color = "black") +
+  geom_smooth(color = "white") +
   facet_grid(Cancer_stage~.) +
-  theme_bw() + 
-  labs(title = 'Зависимость Надежды от Стойкости для разных стадий рака', 
+  dark_theme_gray() +
+  labs(title = 'Зависимость Надежды от Стойкости \n для разных стадий рака', 
        y = 'Надежда',
        x = 'Стойкость',
        fill = 'Стадии рака') 
@@ -214,6 +218,7 @@ p_Social_support_PTSD_symptoms <-
 p_Social_support_PTSD_symptoms 
 #Блинны-ны-ны ны-ны-ны
 ```
+
 Исходя из полученных данных сформируем возможные гипотезы:
 
 -   Гипотеза 1: для студентов колледжа оказваеться большая пооджержка чем для отстальных
@@ -248,6 +253,7 @@ gg_resid_original <- ggplot(data = model_diag_original, aes(x = .fitted, y = .st
 
 gg_resid_original
 ```
+
 Наблюдаеться не совсем хороший график, остатки больше организуються в клюв, чем в песочные часы.
 
 Проведем анализа главных компонентов:
@@ -391,10 +397,12 @@ res_2_model_4 <- gg_resid_model_4 + aes(x = Social_support) +
 res_3_model_4 <- gg_resid_model_4 + aes(x = Resilience) + 
   dark_theme_gray() +
   labs(x = 'Стойкость')
-grid.arrange(res_1_model_4, res_2_model_4, res_3_model_4, nrow = 2)
+
+grid.arrange(arrangeGrob(res_1_model_4, res_2_model_4), res_3_model_4, ncol= 2)
 
 qqPlot(model_diag_model_4$.stdresid, main = 'Q-Q График', ylab = 'Стандр. отстатки', xlab = 'Квантили')
 ```
+
 Как видим дисперсия у нас не изменилась по сравнению с начальной моделью (в которой мы убради выбросы) и все еще соотвествует норме (не идеальной, но норме). 
 На графиках по предикторам видно только, что график Resilience стал под наклоном, но он не коррелирует с другими предикторами.
 Самая плохая дисперсия у Соц. поддержки. Возможно она и портит, общую дисперсию немного.
@@ -419,6 +427,7 @@ Pl_predict <- ggplot(predictions_data, aes(x = Hope, y = fit)) +
        x = 'Надежда') 
 Pl_predict 
 ```
+
 Чтобы протестировать точность модели проведем один, тест где попробуем предсказать значения зная истинное:
 ```{r}
 predictions_data_test <- data.frame(
@@ -474,6 +483,7 @@ p_kuke <- ggplot(model_disp_diag, aes(x = 1:nrow(model_disp_diag), y = .cooksd))
        x = 'номер записи')
 p_kuke 
 ```
+
 Здесь мы видим локальные сильные разбросы значений отклонений прогназируемых значений PTSD_symptoms.
 
 Построим графки остатков:
@@ -529,6 +539,7 @@ gg_bars <- ggplot(data = predictions_data_disp, aes(x = Cancer_stage, y = fit)) 
        fill = 'Стадия рака') 
 gg_bars
 ```
+
 Виден сильный разброс на стадии II, причем даже с учетом разросов групп I и III-IV пересечения не произойдет и степень различий сохраниться. 
 Группа II c учетом разброса показывает не сильные различия между двумя другими группами. Опять все как и должно быть...
 
